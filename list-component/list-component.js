@@ -1,74 +1,51 @@
 /* ******************
- * MODEL
- * ******************/
-function ListModel(dsName) {
-    var data = readDataFromDB(dsName);
-
-    return {
-        getData: function() {
-            return data;
-        }
-    }
-}
-
-/* ******************
  * VIEW
  * ******************/
-function ListView(listData) {
+function createListView(listData, cellTmpl) {
     var htmlString = "";
 
     for (var i = 0; i < listData.length; i++) {
-        htmlString += '<div class="placeholder"></div><div class="cell-header" id="header' + i + '">' + listData[i].header + '</div>';
+        htmlString += '<dl>';
+        htmlString += '<dt>' + listData[i].header + '</dt>';
         for (var j = 0; j < listData[i].items.length; j++) {
-            htmlString += '<div class="contact-single">' + listData[i].items[j] + '</div>';
+            htmlString += '<dd>' + cellTmpl(listData[i].items[j]) + '</dd>';
         };
+        htmlString += '</dl>';
     };
-    
-    return {
-        getHtml: function() {
-            return htmlString;
-        }
-    }
+
+    return htmlString;
 }
 
 /* ******************
  * CONTROLLER
  * ******************/
-function ListController(dsName, domEl, sortFunc, groupFunc, cellTmpl) {
-    // Get data
-    var model = ListModel(dsName);
-
-    // Transform data
-    var cellGroups = {};
-    var data = model.getData();
-    data.sort(sortFunc);
+function ListController(params) {
+    var data = params.data;
+    data.sort(params.sortFunc);
     
     // Group using given function
+    var cellGroups = {};
     for (var i = 0; i < data.length; i++) {
-        var groupName = groupFunc(data[i]);
+        var groupName = params.groupFunc(data[i]);
         if (!cellGroups[groupName]) {
             cellGroups[groupName] = [];
         }
         cellGroups[groupName].push(data[i])
     }
 
-    // Transform into appropriate format
+    // Transform into array
     var listData = [];
     for (var key in cellGroups) {
         listData.push({
             "header": key,
-            "items": cellGroups[key].map((item) => {
-                return cellTmpl(item);
-            })
+            "items": cellGroups[key]
         });
     }
-
-    // Create view
-    var view = ListView(listData);
-    domEl.html(view.getHtml());
-
-    // Listen for events on scroll
-    domEl.scroll(() => {
-        // Do the sticky headers
+    // Sort by headers
+    listData.sort((el1, el2) => {
+        return el1.header < el2.header ? -1 : el1.header > el2.header ? 1 : 0;
     });
+
+    // Add view to the page
+    params.domLoc.html(createListView(listData, params.cellTmpl));
 }
